@@ -1,0 +1,127 @@
+workflows:
+  red_green_refactor:
+    name: "Red-Green-Refactor TDD Cycle"
+    description: "Classic TDD workflow with strict test-first approach"
+    phases:
+      - name: "RED Phase - Write Failing Test"
+        agents:
+          - tdd-specialist
+        mode: single
+        actions:
+          - generate_test_spec
+          - write_test_code
+          - execute_test
+          - verify_test_fails
+        validation:
+          - test_must_fail
+          - test_must_be_meaningful
+        
+      - name: "GREEN Phase - Make Test Pass"
+        agents:
+          - gemini-developer
+          - claude-architect
+        mode: sequential
+        actions:
+          - analyze_test_requirements
+          - implement_minimal_code
+          - execute_test
+          - verify_test_passes
+        validation:
+          - test_must_pass
+          - code_must_be_minimal
+          
+      - name: "REFACTOR Phase - Optimize Code"
+        agents:
+          - codeium-refactorer
+          - claude-architect
+        mode: parallel
+        actions:
+          - identify_improvements
+          - refactor_code
+          - execute_test
+          - verify_test_still_passes
+        validation:
+          - tests_must_remain_green
+          - code_quality_improved
+
+  bdd_workflow:
+    name: "Behavior-Driven Development"
+    description: "BDD with Stagehand natural language tests"
+    phases:
+      - name: "Specification Phase"
+        agents:
+          - claude-architect
+          - tdd-specialist
+        mode: collaborative
+        actions:
+          - define_behaviors
+          - write_stagehand_specs
+          - generate_test_scenarios
+        
+      - name: "Implementation Phase"
+        agents:
+          - gemini-developer
+          - tdd-specialist
+        mode: ping_pong  # Alternate between test and implementation
+        actions:
+          - implement_feature
+          - run_stagehand_tests
+          - iterate_until_passing
+
+  continuous_testing:
+    name: "Continuous Testing Pipeline"
+    description: "Automated testing at every change"
+    triggers:
+      - file_save
+      - git_commit
+      - pr_open
+    phases:
+      - name: "Unit Test Phase"
+        agents:
+          - tdd-specialist
+        mode: parallel
+        actions:
+          - run_unit_tests
+          - generate_coverage_report
+          
+      - name: "Integration Test Phase"
+        agents:
+          - tdd-specialist
+          - claude-tester
+        mode: parallel
+        actions:
+          - run_integration_tests
+          - validate_api_contracts
+          
+      - name: "E2E Test Phase"
+        agents:
+          - tdd-specialist
+        mode: single
+        actions:
+          - run_stagehand_tests
+          - run_playwright_tests
+          - generate_test_report
+
+test_strategies:
+  coverage_requirements:
+    unit: 80
+    integration: 70
+    e2e: 60
+    overall: 75
+    
+  test_pyramid:
+    unit_tests: 70%
+    integration_tests: 20%
+    e2e_tests: 10%
+    
+  failure_handling:
+    on_test_failure:
+      - halt_pipeline
+      - notify_developer
+      - generate_failure_report
+      - suggest_fixes
+    
+    on_coverage_drop:
+      - warn_developer
+      - block_merge
+      - generate_coverage_diff

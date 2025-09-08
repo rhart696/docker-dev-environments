@@ -1,0 +1,56 @@
+{
+  "name": "Python AI Development",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bookworm",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Core
+        "editorconfig.editorconfig",
+        "eamodio.gitlens",
+        
+        // Python specific
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "ms-python.flake8",
+        "ms-python.isort",
+        
+        // AI Assistants
+        "anthropic.claude-code",
+        "google.geminicodeassist",
+        
+        // Jupyter (optional)
+        // "ms-toolsai.jupyter",
+        
+        // Testing
+        "littlefoxteam.vscode-python-test-adapter"
+      ],
+      "settings": {
+        "python.defaultInterpreter": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "python.testing.pytestEnabled": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+
+  "postCreateCommand": "pip install --user black flake8 pytest ipython pandas numpy",
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"
+  ]
+}

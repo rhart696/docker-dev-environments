@@ -1,0 +1,66 @@
+{
+  "name": "Full-Stack AI Development",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Core
+        "editorconfig.editorconfig",
+        "eamodio.gitlens",
+        "gruntfuggly.todo-tree",
+        
+        // Frontend
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        
+        // Backend
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        
+        // Database
+        "prisma.prisma",
+        
+        // AI Assistants
+        "anthropic.claude-code",
+        "google.geminicodeassist",
+        
+        // Docker
+        "ms-azuretools.vscode-docker",
+        
+        // API
+        "redhat.vscode-yaml",
+        "42crunch.vscode-openapi"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "python.defaultInterpreter": "/usr/local/bin/python",
+        "typescript.updateImportsOnFileMove.enabled": "always"
+      }
+    }
+  },
+
+  "forwardPorts": [3000, 5000, 5432, 6379, 8000, 8080],
+  
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"
+  ]
+}

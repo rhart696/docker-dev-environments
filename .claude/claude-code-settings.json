@@ -1,0 +1,111 @@
+{
+  "name": "Docker Dev Environments TDD",
+  "version": "1.0.0",
+  "description": "TDD-enforced development environment",
+  
+  "hooks": {
+    "enabled": true,
+    "scripts": [
+      ".claude/hooks/tdd-enforcer.py"
+    ],
+    "events": {
+      "pre_code_generation": {
+        "enabled": true,
+        "blocking": true,
+        "timeout": 5000
+      },
+      "post_code_generation": {
+        "enabled": true,
+        "blocking": false,
+        "collect_metrics": true
+      },
+      "pre_commit": {
+        "enabled": true,
+        "blocking": true,
+        "timeout": 30000
+      },
+      "test_suggestion": {
+        "enabled": true,
+        "auto_suggest": true
+      }
+    }
+  },
+  
+  "tdd": {
+    "mode": "strict",
+    "require_tests_first": true,
+    "minimum_coverage": 80,
+    "enforce_red_green_refactor": true,
+    "block_untested_code": true,
+    
+    "phases": {
+      "red": {
+        "allow_implementation": false,
+        "require_failing_test": true,
+        "auto_run_tests": true
+      },
+      "green": {
+        "allow_minimal_implementation": true,
+        "block_over_engineering": true,
+        "auto_run_tests": true
+      },
+      "refactor": {
+        "require_passing_tests": true,
+        "monitor_coverage": true,
+        "suggest_improvements": true
+      }
+    }
+  },
+  
+  "testing": {
+    "frameworks": {
+      "javascript": ["jest", "vitest", "playwright", "stagehand"],
+      "python": ["pytest", "unittest"],
+      "go": ["testing"],
+      "java": ["junit", "testng"]
+    },
+    
+    "auto_generate": {
+      "enabled": true,
+      "templates": ".claude/test-templates",
+      "use_ai": true
+    },
+    
+    "coverage": {
+      "statements": 80,
+      "branches": 75,
+      "functions": 80,
+      "lines": 80
+    }
+  },
+  
+  "workflow": {
+    "enforce_tdd": true,
+    "auto_suggest_tests": true,
+    "block_direct_implementation": true,
+    
+    "commands": {
+      "tdd:start": "npm run tdd:cycle",
+      "tdd:red": "npm run test:watch",
+      "tdd:green": "npm run test",
+      "tdd:refactor": "npm run test:coverage",
+      "tdd:commit": "npm run test && git commit"
+    }
+  },
+  
+  "ai_agents": {
+    "tdd_specialist": {
+      "role": "test_generator",
+      "priority": "high",
+      "auto_invoke": true
+    },
+    "code_implementer": {
+      "role": "minimal_implementation",
+      "requires_test": true
+    },
+    "refactorer": {
+      "role": "code_improvement",
+      "requires_green_tests": true
+    }
+  }
+}

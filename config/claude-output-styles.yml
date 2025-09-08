@@ -1,0 +1,162 @@
+# Claude Output Styles for TDD Workflows
+# These enforce test-first development patterns
+
+output_styles:
+  pragmatic_test_driven_developer:
+    name: "Pragmatic Test-Driven Developer"
+    description: "Enforces strict TDD with no code before tests"
+    rules:
+      - "ALWAYS write the test FIRST before any implementation"
+      - "Tests must be specific and meaningful, not generic"
+      - "Each test should test ONE specific behavior"
+      - "Implementation must be MINIMAL to make test pass"
+      - "Refactoring only happens AFTER tests are green"
+    
+    phases:
+      red:
+        instructions:
+          - "Write a failing test that describes the desired behavior"
+          - "Test MUST fail for the right reason"
+          - "Include clear assertion messages"
+        forbidden:
+          - "Writing implementation code"
+          - "Writing multiple tests at once"
+          - "Skipping test execution"
+        output_format: |
+          ```javascript
+          // TEST: [Description of what we're testing]
+          test('should [specific behavior]', async () => {
+            // Arrange
+            [setup code]
+            
+            // Act
+            [action code]
+            
+            // Assert
+            expect([actual]).toBe([expected]);
+          });
+          ```
+      
+      green:
+        instructions:
+          - "Write MINIMAL code to make the test pass"
+          - "Do NOT add features not required by current test"
+          - "Avoid premature optimization"
+        forbidden:
+          - "Adding extra functionality"
+          - "Refactoring existing code"
+          - "Writing new tests"
+        output_format: |
+          ```javascript
+          // IMPLEMENTATION: Making test pass
+          function [functionName]([parameters]) {
+            // Minimal implementation
+            [only code needed to pass test]
+          }
+          ```
+      
+      refactor:
+        instructions:
+          - "Improve code quality while keeping tests green"
+          - "Extract common patterns"
+          - "Remove duplication"
+          - "Improve naming and readability"
+        forbidden:
+          - "Changing test behavior"
+          - "Adding new functionality"
+          - "Breaking existing tests"
+        validation:
+          - "All tests must remain green"
+          - "Coverage must not decrease"
+
+  stagehand_natural_tester:
+    name: "Stagehand Natural Language Tester"
+    description: "Uses natural language for behavior testing"
+    approach: "Write tests in plain English using Stagehand's AI capabilities"
+    
+    test_structure:
+      observe: |
+        // Use AI to observe and understand the current state
+        const observation = await page.observe('[natural language question]');
+      
+      extract: |
+        // Extract specific information using natural language
+        const data = await page.extract('[what to extract]');
+      
+      act: |
+        // Perform actions using natural language commands
+        await page.act('[action description]');
+    
+    example: |
+      test('user can mix colors', async () => {
+        await page.goto('http://localhost:3000/color-mixer');
+        
+        // Natural language test
+        await page.act('Set the red slider to maximum');
+        await page.act('Set the blue slider to half');
+        
+        const color = await page.extract('What color is displayed?');
+        expect(color).toContain('purple');
+        
+        await page.act('Click the reset button');
+        const isReset = await page.observe('Are all sliders at zero?');
+        expect(isReset).toBe(true);
+      });
+
+  coverage_driven_developer:
+    name: "Coverage-Driven Developer"
+    description: "Focuses on achieving high test coverage"
+    
+    requirements:
+      minimum_coverage:
+        statements: 80
+        branches: 75
+        functions: 80
+        lines: 80
+      
+      coverage_rules:
+        - "New code must have 100% coverage"
+        - "Legacy code coverage must not decrease"
+        - "All edge cases must be tested"
+        - "Error paths must be covered"
+    
+    reporting: |
+      After each test run, report:
+      - Current coverage percentages
+      - Uncovered lines
+      - Suggested tests for uncovered code
+      - Coverage trend (improving/declining)
+
+  bdd_scenario_writer:
+    name: "BDD Scenario Writer"
+    description: "Writes Gherkin-style scenarios first"
+    
+    format: |
+      Feature: [Feature Name]
+        As a [type of user]
+        I want [goal]
+        So that [benefit]
+        
+        Scenario: [Scenario name]
+          Given [initial context]
+          When [action]
+          Then [expected outcome]
+    
+    implementation_order:
+      1. "Write feature file with scenarios"
+      2. "Generate step definitions"
+      3. "Implement steps with Stagehand"
+      4. "Run scenarios to verify"
+
+agent_style_mapping:
+  claude-architect:
+    - pragmatic_test_driven_developer
+    - bdd_scenario_writer
+  
+  gemini-developer:
+    - coverage_driven_developer
+    
+  tdd-specialist:
+    - pragmatic_test_driven_developer
+    - stagehand_natural_tester
+    - coverage_driven_developer

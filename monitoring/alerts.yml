@@ -1,0 +1,93 @@
+groups:
+  - name: agent_alerts
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (sum(container_memory_usage_bytes{container=~".*agent.*|.*claude.*|.*gemini.*"}) / sum(container_spec_memory_limit_bytes{container=~".*agent.*|.*claude.*|.*gemini.*"})) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Agent containers are using more than 90% of allocated memory"
+
+      - alert: HighCPUUsage
+        expr: (sum(rate(container_cpu_usage_seconds_total{container=~".*agent.*|.*claude.*|.*gemini.*"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Agent containers are using more than 80% CPU"
+
+      - alert: AgentContainerDown
+        expr: up{job="agents"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent container is down"
+          description: "Agent container {{ $labels.container_name }} is not responding"
+
+      - alert: OrchestratorDown
+        expr: up{job="orchestrator"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Orchestrator service is down"
+          description: "The orchestrator service is not responding"
+
+      - alert: ResourceManagerDown
+        expr: up{job="resource-manager"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Resource Manager service is down"
+          description: "The resource manager service is not responding"
+
+      - alert: TaskQueueBacklog
+        expr: orchestrator_queue_size > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Task queue backlog detected"
+          description: "Task queue has more than 100 pending tasks"
+
+      - alert: TaskFailureRate
+        expr: (rate(orchestrator_tasks_total{status="failed"}[5m]) / rate(orchestrator_tasks_total[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High task failure rate"
+          description: "More than 20% of tasks are failing"
+
+      - alert: ResourceViolations
+        expr: rate(resource_manager_violations[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Resource violations detected"
+          description: "Resource manager is detecting frequent resource limit violations"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis server is not responding"
+
+      - alert: ContainerRestartLoop
+        expr: rate(container_last_seen{container=~".*agent.*|.*claude.*|.*gemini.*"}[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container restart loop detected"
+          description: "Container {{ $labels.container }} has restarted more than 3 times in 15 minutes"

@@ -1,0 +1,308 @@
+version: '3.8'
+
+networks:
+  agent-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+  workspace:
+  artifacts:
+
+services:
+  # Core Infrastructure
+  redis:
+    image: redis:7-alpine
+    container_name: agent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - agent-network
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Main Orchestrator
+  orchestrator:
+    build: ./orchestrator
+    container_name: agent-orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - ORCHESTRATOR_MODE=${ORCHESTRATION_MODE:-hybrid}
+      - REDIS_HOST=redis
+      - MAX_PARALLEL_AGENTS=4
+      - LOG_LEVEL=INFO
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./workspace:/workspace
+      - ./artifacts:/artifacts
+      - ./config:/config
+    networks:
+      - agent-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+
+  # Claude Agent - Architecture & Design
+  claude-architect:
+    image: anthropic/claude-agent:latest
+    container_name: claude-architect
+    environment:
+      - AGENT_ROLE=architect
+      - CLAUDE_API_KEY_FILE=/run/secrets/claude_api_key
+      - MODEL=claude-3-opus-20240229
+      - FOCUS_AREAS=architecture,design,patterns,security
+      - REDIS_HOST=redis
+      - MAX_TOKENS=4096
+    volumes:
+      - ./workspace:/workspace
+      - ./artifacts:/artifacts
+    networks:
+      - agent-network
+    secrets:
+      - claude_api_key
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    profiles:
+      - architects
+
+  # Gemini Agent - Implementation
+  gemini-developer:
+    image: google/gemini-agent:latest
+    container_name: gemini-developer
+    environment:
+      - AGENT_ROLE=developer
+      - GEMINI_API_KEY_FILE=/run/secrets/gemini_api_key
+      - MODEL=gemini-2.5-pro
+      - FOCUS_AREAS=implementation,optimization,algorithms
+      - REDIS_HOST=redis
+      - CONTEXT_WINDOW=1000000
+    volumes:
+      - ./workspace:/workspace
+      - ./artifacts:/artifacts
+    networks:
+      - agent-network
+    secrets:
+      - gemini_api_key
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    profiles:
+      - developers
+
+  # Claude Agent - Testing
+  claude-tester:
+    image: anthropic/claude-agent:latest
+    container_name: claude-tester
+    environment:
+      - AGENT_ROLE=tester
+      - CLAUDE_API_KEY_FILE=/run/secrets/claude_api_key
+      - MODEL=claude-3-sonnet-20240229
+      - FOCUS_AREAS=testing,verification,quality
+      - REDIS_HOST=redis
+    volumes:
+      - ./workspace:/workspace
+      - ./artifacts:/artifacts
+    networks:
+      - agent-network
+    secrets:
+      - claude_api_key
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    profiles:
+      - testers
+
+  # Codeium Agent - Refactoring
+  codeium-refactorer:
+    image: codeium/agent:latest
+    container_name: codeium-refactorer
+    environment:
+      - AGENT_ROLE=refactorer
+      - CODEIUM_API_KEY_FILE=/run/secrets/codeium_api_key
+      - FOCUS_AREAS=refactoring,cleanup,performance
+      - REDIS_HOST=redis
+    volumes:
+      - ./workspace:/workspace
+      - ./artifacts:/artifacts
+    networks:
+      - agent-network
+    secrets:
+      - codeium_api_key
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    profiles:
+      - refactorers
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agent-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - agent-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agent-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3001:3000"
+    networks:
+      - agent-network
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+
+  # Container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: agent-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - agent-network
+    privileged: true
+    devices:
+      - /dev/kmsg
+    profiles:
+      - monitoring
+
+  # Resource Manager
+  resource-manager:
+    build: ./resource-manager
+    container_name: agent-resource-manager
+    environment:
+      - MAX_TOTAL_MEMORY=16G
+      - MAX_TOTAL_CPU=8
+      - REDIS_HOST=redis
+      - CHECK_INTERVAL=30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - agent-network
+    depends_on:
+      - redis
+      - orchestrator
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    profiles:
+      - management
+
+  # Persistence Service for Agent Outputs
+  persistence-service:
+    build: ./persistence
+    container_name: agent-persistence
+    ports:
+      - "5001:5000"
+    environment:
+      - WORKSPACE_DIR=/workspace
+      - SPECS_DIR=/specs
+      - OUTPUTS_DIR=/outputs
+      - VALIDATE_SPECS=true
+      - AUTO_COMMIT=true
+      - TDD_MODE=enforced
+      - REDIS_HOST=redis
+    volumes:
+      - ./workspace:/workspace
+      - ./specs:/specs
+      - ./outputs:/outputs
+      - ./artifacts:/artifacts
+    networks:
+      - agent-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+secrets:
+  claude_api_key:
+    file: ~/.secrets/claude_api_key
+  gemini_api_key:
+    file: ~/.secrets/gemini_api_key
+  codeium_api_key:
+    file: ~/.secrets/codeium_api_key
+
+# Usage Examples:
+# 
+# Start core services only:
+# docker-compose -f docker-compose.multi-agent.yml up orchestrator redis
+#
+# Start with monitoring:
+# docker-compose -f docker-compose.multi-agent.yml --profile monitoring up
+#
+# Start all architect agents:
+# docker-compose -f docker-compose.multi-agent.yml --profile architects up
+#
+# Start everything:
+# docker-compose -f docker-compose.multi-agent.yml --profile architects --profile developers --profile testers --profile monitoring --profile management up
+#
+# Scale specific agents:
+# docker-compose -f docker-compose.multi-agent.yml up --scale gemini-developer=3

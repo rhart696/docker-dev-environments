@@ -1,0 +1,116 @@
+# Specification for User Authentication Feature
+# This drives the TDD workflow for agents
+
+feature:
+  name: "User Authentication System"
+  type: "backend-api"
+  description: "RESTful API for user registration, login, and token management"
+  priority: "high"
+
+# Define expected outputs in TDD order
+outputs:
+  # RED Phase - Write tests first
+  - path: "tests/test_auth.py"
+    type: "test"
+    phase: "red"
+    description: "Unit tests for authentication service"
+    required_elements:
+      - "test_user_registration_success"
+      - "test_user_registration_duplicate"
+      - "test_user_login_success"
+      - "test_user_login_invalid"
+      - "test_token_validation"
+      - "test_token_expiration"
+      - "test_password_hashing"
+      
+  - path: "tests/test_auth_integration.py"
+    type: "test"
+    phase: "red"
+    description: "Integration tests for auth endpoints"
+    required_elements:
+      - "test_registration_endpoint"
+      - "test_login_endpoint"
+      - "test_protected_endpoint"
+      
+  # GREEN Phase - Write implementation to pass tests
+  - path: "src/auth/models.py"
+    type: "implementation"
+    phase: "green"
+    description: "User model and database schema"
+    required_elements:
+      - "class User"
+      - "username: str"
+      - "email: str"
+      - "password_hash: str"
+      - "created_at: datetime"
+      
+  - path: "src/auth/service.py"
+    type: "implementation"
+    phase: "green"
+    description: "Authentication service logic"
+    required_elements:
+      - "class AuthService"
+      - "def register_user"
+      - "def authenticate_user"
+      - "def generate_token"
+      - "def validate_token"
+      - "def hash_password"
+      - "def verify_password"
+      
+  - path: "src/auth/api.py"
+    type: "implementation"
+    phase: "green"
+    description: "REST API endpoints"
+    required_elements:
+      - "@app.route('/register'"
+      - "@app.route('/login'"
+      - "@app.route('/validate'"
+      - "def require_auth"
+      
+  # REFACTOR Phase - Improve code quality
+  - path: "src/auth/service.py"
+    type: "refactored"
+    phase: "refactor"
+    description: "Refactored authentication service"
+    
+  - path: "docs/auth-api.md"
+    type: "documentation"
+    phase: "refactor"
+    description: "API documentation"
+    required_elements:
+      - "## Endpoints"
+      - "### POST /register"
+      - "### POST /login"
+      - "## Authentication"
+      - "## Error Codes"
+
+# Validation rules for this feature
+validation:
+  coverage_minimum: 85
+  linting:
+    - "flake8"
+    - "black"
+  type_checking: "mypy"
+  security_checks:
+    - "no_plain_passwords"
+    - "jwt_secret_required"
+    - "rate_limiting_enabled"
+    
+# Dependencies and requirements
+requirements:
+  python_packages:
+    - "flask>=2.0.0"
+    - "flask-jwt-extended>=4.0.0"
+    - "bcrypt>=3.2.0"
+    - "sqlalchemy>=2.0.0"
+    - "pytest>=7.0.0"
+    - "pytest-cov>=4.0.0"
+    
+# Acceptance criteria
+acceptance_criteria:
+  - "Users can register with unique email"
+  - "Users can login with valid credentials"
+  - "Tokens expire after configured time"
+  - "Passwords are securely hashed"
+  - "Protected endpoints require valid token"
+  - "All tests pass with >85% coverage"
