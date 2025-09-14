@@ -29,41 +29,65 @@ print_header() {
 
 check_prerequisites() {
     echo -e "${YELLOW}Checking prerequisites...${NC}"
-    
+
     # Check Docker
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}❌ Docker is not installed${NC}"
         exit 1
     fi
-    
+
     # Check Docker Compose
     if ! command -v docker-compose &> /dev/null; then
         echo -e "${RED}❌ Docker Compose is not installed${NC}"
         exit 1
     fi
-    
+
     # Check directories
     mkdir -p "$WORKSPACE_DIR" "$ARTIFACTS_DIR" "$CONFIG_DIR" "$SECRETS_DIR"
-    
-    # Check API keys
-    if [ ! -f "$SECRETS_DIR/claude_api_key" ]; then
-        echo -e "${YELLOW}⚠️  Claude API key not found at $SECRETS_DIR/claude_api_key${NC}"
+
+    # Check for 1Password CLI and use it if available
+    if command -v op &> /dev/null && op account get &> /dev/null; then
+        echo -e "${GREEN}✅ Using 1Password CLI for secrets${NC}"
+
+        # Export API keys from 1Password
+        export CLAUDE_API_KEY=$(op read "op://Private/Anthropic/api_key" 2>/dev/null || echo "")
+        export GEMINI_API_KEY=$(op read "op://Private/Gemini/api_key" 2>/dev/null || op read "op://Private/Google Gemini/credential" 2>/dev/null || echo "")
+        export GITHUB_TOKEN=$(op read "op://Private/GitHub/token" 2>/dev/null || echo "")
+        export CODEIUM_API_KEY=$(op read "op://Private/Codeium/api_key" 2>/dev/null || echo "")
+
+        # Create temporary key files for Docker if keys exist in 1Password
+        if [ -n "$CLAUDE_API_KEY" ]; then
+            echo "$CLAUDE_API_KEY" > "$SECRETS_DIR/claude_api_key"
+            chmod 600 "$SECRETS_DIR/claude_api_key"
+        fi
+
+        if [ -n "$GEMINI_API_KEY" ]; then
+            echo "$GEMINI_API_KEY" > "$SECRETS_DIR/gemini_api_key"
+            chmod 600 "$SECRETS_DIR/gemini_api_key"
+        fi
+    fi
+
+    # Fall back to manual entry if keys not found
+    if [ ! -f "$SECRETS_DIR/claude_api_key" ] && [ -z "$CLAUDE_API_KEY" ]; then
+        echo -e "${YELLOW}⚠️  Claude API key not found${NC}"
+        echo "  Try: op read \"op://Private/Anthropic/api_key\""
         read -p "Enter Claude API key (or press Enter to skip): " CLAUDE_KEY
         if [ -n "$CLAUDE_KEY" ]; then
             echo "$CLAUDE_KEY" > "$SECRETS_DIR/claude_api_key"
             chmod 600 "$SECRETS_DIR/claude_api_key"
         fi
     fi
-    
-    if [ ! -f "$SECRETS_DIR/gemini_api_key" ]; then
-        echo -e "${YELLOW}⚠️  Gemini API key not found at $SECRETS_DIR/gemini_api_key${NC}"
+
+    if [ ! -f "$SECRETS_DIR/gemini_api_key" ] && [ -z "$GEMINI_API_KEY" ]; then
+        echo -e "${YELLOW}⚠️  Gemini API key not found${NC}"
+        echo "  Try: op read \"op://Private/Gemini/api_key\""
         read -p "Enter Gemini API key (or press Enter to skip): " GEMINI_KEY
         if [ -n "$GEMINI_KEY" ]; then
             echo "$GEMINI_KEY" > "$SECRETS_DIR/gemini_api_key"
             chmod 600 "$SECRETS_DIR/gemini_api_key"
         fi
     fi
-    
+
     echo -e "${GREEN}✅ Prerequisites checked${NC}"
     echo ""
 }

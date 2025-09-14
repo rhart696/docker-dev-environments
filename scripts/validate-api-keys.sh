@@ -27,17 +27,25 @@ echo ""
 # Function to validate Claude API key
 validate_claude() {
     echo -e "${YELLOW}Validating Claude API key...${NC}"
-    
-    # Check for API key file
-    if [ -f "$SECRETS_DIR/claude_api_key" ]; then
+
+    # Check for API key from various sources
+    if command -v op &> /dev/null && op account get &> /dev/null; then
+        # Try 1Password first
+        API_KEY=$(op read "op://Private/Anthropic/api_key" 2>/dev/null || echo "")
+    fi
+
+    if [ -z "$API_KEY" ] && [ -f "$SECRETS_DIR/claude_api_key" ]; then
         API_KEY=$(cat "$SECRETS_DIR/claude_api_key")
-    elif [ -n "$CLAUDE_API_KEY" ]; then
+    elif [ -z "$API_KEY" ] && [ -n "$CLAUDE_API_KEY" ]; then
         API_KEY="$CLAUDE_API_KEY"
-    elif [ -f "$CONFIG_DIR/claude/api_key" ]; then
+    elif [ -z "$API_KEY" ] && [ -f "$CONFIG_DIR/claude/api_key" ]; then
         API_KEY=$(cat "$CONFIG_DIR/claude/api_key")
-    else
+    fi
+
+    if [ -z "$API_KEY" ]; then
         echo -e "${RED}❌ Claude API key not found${NC}"
         echo "  Expected locations:"
+        echo "    - 1Password: op://Private/Anthropic/api_key"
         echo "    - $SECRETS_DIR/claude_api_key"
         echo "    - \$CLAUDE_API_KEY environment variable"
         echo "    - $CONFIG_DIR/claude/api_key"
@@ -77,17 +85,25 @@ validate_claude() {
 # Function to validate Gemini API key
 validate_gemini() {
     echo -e "${YELLOW}Validating Gemini API key...${NC}"
-    
-    # Check for API key file
-    if [ -f "$SECRETS_DIR/gemini_api_key" ]; then
+
+    # Check for API key from various sources
+    if command -v op &> /dev/null && op account get &> /dev/null; then
+        # Try 1Password first
+        API_KEY=$(op read "op://Private/Gemini/api_key" 2>/dev/null || op read "op://Private/Google Gemini/credential" 2>/dev/null || echo "")
+    fi
+
+    if [ -z "$API_KEY" ] && [ -f "$SECRETS_DIR/gemini_api_key" ]; then
         API_KEY=$(cat "$SECRETS_DIR/gemini_api_key")
-    elif [ -n "$GEMINI_API_KEY" ]; then
+    elif [ -z "$API_KEY" ] && [ -n "$GEMINI_API_KEY" ]; then
         API_KEY="$GEMINI_API_KEY"
-    elif [ -f "$CONFIG_DIR/gemini/api_key" ]; then
+    elif [ -z "$API_KEY" ] && [ -f "$CONFIG_DIR/gemini/api_key" ]; then
         API_KEY=$(cat "$CONFIG_DIR/gemini/api_key")
-    else
+    fi
+
+    if [ -z "$API_KEY" ]; then
         echo -e "${RED}❌ Gemini API key not found${NC}"
         echo "  Expected locations:"
+        echo "    - 1Password: op://Private/Gemini/api_key or op://Private/Google Gemini/credential"
         echo "    - $SECRETS_DIR/gemini_api_key"
         echo "    - \$GEMINI_API_KEY environment variable"
         echo "    - $CONFIG_DIR/gemini/api_key"
@@ -118,13 +134,20 @@ validate_gemini() {
 # Function to validate Codeium API key
 validate_codeium() {
     echo -e "${YELLOW}Validating Codeium API key...${NC}"
-    
-    # Check for API key file
-    if [ -f "$SECRETS_DIR/codeium_api_key" ]; then
+
+    # Check for API key from various sources
+    if command -v op &> /dev/null && op account get &> /dev/null; then
+        # Try 1Password first
+        API_KEY=$(op read "op://Private/Codeium/api_key" 2>/dev/null || echo "")
+    fi
+
+    if [ -z "$API_KEY" ] && [ -f "$SECRETS_DIR/codeium_api_key" ]; then
         API_KEY=$(cat "$SECRETS_DIR/codeium_api_key")
-    elif [ -n "$CODEIUM_API_KEY" ]; then
+    elif [ -z "$API_KEY" ] && [ -n "$CODEIUM_API_KEY" ]; then
         API_KEY="$CODEIUM_API_KEY"
-    else
+    fi
+
+    if [ -z "$API_KEY" ]; then
         echo -e "${YELLOW}⚠️  Codeium API key not found (optional)${NC}"
         return 0
     fi

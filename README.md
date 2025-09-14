@@ -39,6 +39,45 @@ docker-dev-environments/
 
 ```
 
+## 🔄 Continuous GitHub Integration
+
+### Auto-Commit System
+Automatically commit and push changes to GitHub with intelligent batching:
+
+```bash
+# One-time setup
+./scripts/auto-commit.sh setup
+
+# Start auto-commit daemon
+./scripts/auto-commit.sh daemon
+
+# Check status
+./scripts/auto-commit.sh status
+
+# Stop daemon
+./scripts/auto-commit.sh stop
+```
+
+### Features
+- **Intelligent batching**: Groups related changes together
+- **GitHub MCP integration**: Uses AI to generate meaningful commit messages
+- **VS Code integration**: Auto-commits on file save
+- **Git hooks**: Post-commit automation and validation
+- **GitHub Actions**: Automated CI/CD pipeline
+
+### Workflow Modes
+1. **Manual mode**: Commit when you choose
+2. **Auto mode**: Commit every 5 minutes (configurable)
+3. **Continuous mode**: Commit on every save
+4. **Daemon mode**: Background process for hands-free operation
+
+### Environment Variables
+```bash
+export AUTO_PUSH=true           # Auto-push after commit
+export COMMIT_INTERVAL=300      # Seconds between commits
+export BATCH_SIZE=10            # Max files per commit
+```
+
 ## 🚀 Quick Start
 
 ### 1. Clean Up VS Code Extensions
@@ -140,14 +179,82 @@ Access at `http://localhost:8000`
 
 ## 🔧 Configuration
 
-### API Keys Setup
+### 1Password CLI Integration
 
+✅ **Full 1Password CLI integration is supported** for secure API key management:
+
+#### Automatic Secret Retrieval
+The system automatically retrieves API keys from 1Password when the CLI is available:
+- **Claude API**: `op://Private/Anthropic/api_key`
+- **Gemini API**: `op://Private/Gemini/api_key` or `op://Private/Google Gemini/credential`
+- **GitHub Token**: `op://Private/GitHub/token`
+- **OpenAI API**: `op://Private/OpenAI API Key/credential`
+- **Codeium API**: `op://Private/Codeium/api_key`
+
+#### Setup 1Password Integration
+```bash
+# Run the setup script to configure 1Password CLI integration
+./scripts/setup-1password-integration.sh
+
+# Validate API keys (now checks 1Password first)
+./scripts/validate-api-keys.sh
+```
+
+#### Features
+- **Automatic detection**: Scripts check for 1Password CLI and use it when available
+- **Fallback support**: Falls back to file-based secrets if 1Password is unavailable
+- **Docker integration**: Creates temporary key files for Docker containers
+- **Session management**: Supports `op run` for injecting secrets into processes
+
+### GitHub MCP Integration (VS Code)
+
+✅ **GitHub MCP Server is configured globally in VS Code** with the following setup:
+- Server configured at: `~/.vscode-server/data/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+- Uses `@modelcontextprotocol/server-github` npm package
+- Requires `GITHUB_PERSONAL_ACCESS_TOKEN` environment variable for authentication
+- Enables AI assistants to interact with GitHub repositories, issues, and pull requests
+
+#### Verify Setup
+```bash
+npx -y @modelcontextprotocol/server-github --version
+```
+
+#### GitHub MCP Commands (via AI assistants)
+When using Claude or other AI assistants with GitHub MCP:
+- **Create issues**: "Create a GitHub issue for the bug in authentication"
+- **List PRs**: "Show me all open pull requests"
+- **Review code**: "Review the latest PR and suggest improvements"
+- **Manage releases**: "Create a new release with the latest changes"
+- **Search repos**: "Find all TODO comments in the repository"
+
+#### Automated GitHub Operations
+The auto-commit system leverages GitHub MCP for:
+- Intelligent commit message generation based on code changes
+- Automatic issue linking from commit messages
+- PR creation with AI-generated descriptions
+- Release notes generation from commit history
+
+### API Keys Setup (Alternative Methods)
+
+#### Option 1: Using 1Password CLI (Recommended)
+```bash
+# Install 1Password CLI if not already installed
+curl -sS https://downloads.1password.com/linux/cli/stable/op_linux_amd64_v2.29.0.zip | unzip -j - op -d ~/bin/
+
+# Sign in to 1Password
+op signin
+
+# Keys are automatically retrieved from 1Password vault
+```
+
+#### Option 2: Manual File-Based Setup
 Create API key files:
 ```bash
 mkdir -p ~/.secrets
 echo "your-claude-api-key" > ~/.secrets/claude_api_key
 echo "your-gemini-api-key" > ~/.secrets/gemini_api_key
-chmod 600 ~/.secrets/*_api_key
+echo "your-github-token" > ~/.secrets/github_token  # For GitHub MCP
+chmod 600 ~/.secrets/*_api_key ~/.secrets/github_token
 ```
 
 ### Environment Variables
@@ -181,6 +288,12 @@ MAX_TOTAL_CPU=8
 - **Network restrictions** via firewall rules
 - **Resource limits** preventing resource exhaustion
 - **Secret management** for API keys
+- **1Password CLI integration** for secure credential storage
+  - Never store API keys in plain text files
+  - Automatic secret rotation support
+  - Audit trail for secret access
+  - Session-based authentication
+  - Zero-knowledge architecture
 
 ## 📝 Usage Examples
 
