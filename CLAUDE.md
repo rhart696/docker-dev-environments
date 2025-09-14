@@ -8,10 +8,29 @@ Docker Dev Environments system with multi-agent AI orchestration for isolated de
 
 ## Common Development Commands
 
+### Setup and Dependencies
+```bash
+# Install Python dependencies for orchestrator
+cd orchestrator && pip install -r requirements.txt && cd ..
+
+# Install Python dependencies for persistence service
+cd persistence && pip install -r requirements.txt && cd ..
+
+# Install dependencies for resource manager
+cd resource-manager && pip install -r requirements.txt && cd ..
+
+# Verify Docker and Docker Compose are available
+docker --version
+docker-compose --version
+```
+
 ### Running Tests
 ```bash
 # Run orchestrator tests
 cd orchestrator && python -m pytest tests/test_orchestrator.py -v --tb=short
+
+# Run persistence service tests
+python -m pytest tests/test_persistence_service.py -v --tb=short
 
 # Run TDD enforcer tests
 python -m pytest tests/test_tdd_enforcer.py -v
@@ -24,6 +43,9 @@ python -m pytest tests/test_adr_system.py -v
 
 # Run ADR bash tests
 ./tests/test_adr_bash.sh
+
+# Run specific test
+python -m pytest tests/test_orchestrator.py::TestTaskManager::test_submit_task_generates_unique_id -v
 ```
 
 ### Multi-Agent Orchestration
@@ -180,6 +202,13 @@ chmod 600 ~/.secrets/*_api_key
 
 ## Orchestrator API
 
+### Endpoints
+- `POST /execute` - Submit a task for execution
+- `GET /tasks/{task_id}` - Check task status
+- `GET /agents` - List available agents and their status
+- `GET /health` - Health check endpoint
+
+### Example API Calls
 ```bash
 # Submit parallel code review
 curl -X POST http://localhost:8000/execute \
@@ -190,6 +219,28 @@ curl -X POST http://localhost:8000/execute \
     "agents": ["claude-architect", "gemini-developer", "claude-tester"],
     "payload": {"repository": "my-project"}
   }'
+
+# Check task status
+curl http://localhost:8000/tasks/{task_id}
+
+# List available agents
+curl http://localhost:8000/agents
+```
+
+## Persistence Service API
+
+### Endpoints
+- `POST /save` - Save files with spec validation and TDD enforcement
+- `POST /validate` - Validate outputs against specifications
+- `GET /specs` - List available specifications
+- `GET /coverage` - Get test coverage report
+
+### Example API Calls
+```bash
+# Save file with validation
+curl -X POST http://localhost:5001/save \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "feature.py", "content": "...", "spec_name": "auth-feature"}'
 ```
 
 ## Environment Configuration
@@ -200,4 +251,47 @@ ORCHESTRATION_MODE=hybrid
 MAX_PARALLEL_AGENTS=4
 MAX_TOTAL_MEMORY=16G
 MAX_TOTAL_CPU=8
+```
+
+## Monitoring Dashboards
+
+- **Grafana**: http://localhost:3001 (admin/admin)
+- **Prometheus**: http://localhost:9090
+- **cAdvisor**: http://localhost:8080
+- **Orchestrator API**: http://localhost:8000
+- **Persistence Service**: http://localhost:5001
+
+## Testing Approach
+
+The project follows strict TDD (Test-Driven Development) with RED-GREEN-REFACTOR cycle:
+1. **RED Phase**: Write failing tests first (tests in `*/tests/test_*.py`)
+2. **GREEN Phase**: Implement minimal code to pass tests
+3. **REFACTOR Phase**: Improve code while keeping tests green
+
+### Test Coverage Requirements
+- Minimum 80% code coverage enforced by persistence service
+- TDD hooks prevent implementation without tests
+- All tests use pytest framework with async support
+
+## Debugging and Troubleshooting
+
+```bash
+# View Docker logs for specific service
+docker-compose -f docker-compose.multi-agent.yml logs -f orchestrator
+docker-compose -f docker-compose.multi-agent.yml logs -f redis
+
+# Check container status
+docker ps -a
+
+# Enter container for debugging
+docker exec -it docker-dev-environments_orchestrator_1 bash
+
+# Check Redis connection
+redis-cli ping
+
+# Test orchestrator health
+curl http://localhost:8000/health
+
+# View Python package versions
+pip list | grep -E "fastapi|redis|pytest"
 ```
