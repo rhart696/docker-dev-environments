@@ -96,6 +96,16 @@ EOF
 echo "✅ Project created"
 echo ""
 
+# Offer GitHub integration
+read -p "Setup GitHub repository? (y/n): " -n 1 -r
+echo ""
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "🔗 Setting up GitHub integration..."
+    "$HOME/active-projects/docker-dev-environments/scripts/github-integration.sh" "$PROJECT_PATH"
+    echo ""
+fi
+
 # Offer to open in VS Code
 read -p "Open in VS Code now? (y/n): " -n 1 -r
 echo ""

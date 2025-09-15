@@ -10,6 +10,17 @@ This project provides a complete solution for:
 - **Multi-agent AI orchestration** with parallel and sequential execution patterns
 - **Resource management** and monitoring for AI agents
 - **Template-based project initialization**
+- **Optional GitHub integration** - Git-ize when you're ready, not before
+
+### Philosophy: Progressive Git-ization
+
+Not every project needs to be on GitHub immediately. Our approach:
+- **Local-first development** - Start coding without friction
+- **Git when ready** - Initialize version control when it adds value
+- **GitHub when needed** - Push to remote when sharing or deploying
+- **Privacy by default** - New repos are private unless you choose otherwise
+
+This keeps you productive for experiments, learning, and client work without premature commitment to public repositories.
 
 ## 📁 Project Structure
 
@@ -93,7 +104,23 @@ cd ~/active-projects/docker-dev-environments
 
 ```bash
 ./scripts/dev-container-quickstart.sh
-# Follow the interactive prompts
+# Follow the interactive prompts:
+#   1. Select template (base/python/node/fullstack)
+#   2. Choose GitHub integration (optional)
+#   3. Open in VS Code (optional)
+```
+
+#### GitHub Integration (Optional)
+Each project can optionally be:
+- **Automatically created** on GitHub (public/private)
+- **Linked** to your GitHub account
+- **Configured** with CI/CD workflows
+- **Protected** with branch rules
+- **Auto-committed** with the continuous integration system
+
+To add GitHub to an existing project later:
+```bash
+./scripts/github-integration.sh /path/to/project
 ```
 
 ### 3. Launch Multi-Agent System
