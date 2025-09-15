@@ -1,0 +1,28 @@
+FROM mcr.microsoft.com/devcontainers/python:3.11-bookworm
+
+# Install additional Python tools
+RUN pip install --no-cache-dir \
+    black \
+    flake8 \
+    pytest \
+    pytest-cov \
+    ipython \
+    pandas \
+    numpy \
+    requests \
+    python-dotenv \
+    psycopg2-binary \
+    redis \
+    sqlalchemy \
+    alembic
+
+# Install PostgreSQL client
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up workspace
+WORKDIR /workspace
+
+# Keep container running
+CMD ["sleep", "infinity"]

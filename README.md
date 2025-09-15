@@ -14,7 +14,7 @@ This project provides a complete solution for:
 
 ### Global AI Development Tools Installed
 
-✅ **Claude Code** (v1.0.113) - Via Claude Max Plan subscription
+✅ **Claude Code** (v1.0.113) - Via Claude Max Plan subscription (NO API KEY REQUIRED)
 ✅ **OpenAI Codex CLI** (v0.34.0) - Terminal-based coding agent
 ✅ **Gemini CLI** (v0.1.13) - Google's AI assistant
 ✅ **Claude Code Router** (v1.0.26) - Multi-model routing system
@@ -114,10 +114,20 @@ cd ~/active-projects/docker-dev-environments
 ```bash
 ./scripts/dev-container-quickstart.sh
 # Follow the interactive prompts:
-#   1. Select template (base/python/node/fullstack)
-#   2. Choose GitHub integration (optional)
-#   3. Open in VS Code (optional)
+#   1. Select template (base/python/node/fullstack/stagehand)
+#   2. Choose Docker Compose setup (optional but recommended)
+#   3. Select service stack (PostgreSQL, MongoDB, Redis, etc.)
+#   4. Choose GitHub integration (optional)
+#   5. Open in VS Code (optional)
 ```
+
+#### Docker Compose Integration (NEW!)
+The script now offers **optional Docker Compose** for multi-service setups:
+- **Automatic suggestion** based on template (defaults to Yes for most)
+- **Service selection menus** tailored to each template
+- **Pre-configured stacks** with databases, caching, and messaging
+- **Dev tools included** (Adminer, RedisInsight, Kibana via profiles)
+- **Auto-generated configuration** files and project structure
 
 #### GitHub Integration (Optional)
 Each project can optionally be:
@@ -175,24 +185,43 @@ Intelligent routing based on task analysis:
 - Minimal setup with optional AI assistants
 - Core development tools
 - Security-focused configuration
+- **Docker Compose Options**: Basic, PostgreSQL, PostgreSQL+Redis
 
 ### Python AI Template
 - Python 3.11 environment
 - Claude Code & Gemini CLI integration
 - Data science libraries
 - Testing frameworks
+- **Docker Compose Stacks**:
+  - Standard (PostgreSQL + Redis)
+  - With Celery (+ task queue)
+  - MongoDB variant (MongoDB + Redis)
 
 ### Node.js AI Template
 - Node.js 20 with TypeScript
 - ESLint & Prettier configured
 - AI assistants integrated
 - Modern build tools
+- **Docker Compose Stacks**:
+  - PostgreSQL stack (PostgreSQL + Redis)
+  - MongoDB stack (MongoDB + Redis)
+  - Full stack (PostgreSQL + MongoDB + Redis)
 
 ### Full-Stack Template
 - Combined Python & Node.js
 - Database tools (PostgreSQL, Redis)
 - Docker-in-Docker support
 - Complete AI assistant suite
+- **Docker Compose Stacks**:
+  - Standard (PostgreSQL + MongoDB + Redis)
+  - With messaging (+ RabbitMQ)
+  - Full platform (+ Elasticsearch + MinIO + RabbitMQ)
+
+### Stagehand Testing Template
+- Browser automation testing
+- Playwright-based testing
+- AI-powered test generation
+- **Docker Compose**: Usually not needed (single container)
 
 ## 📊 Monitoring & Management
 
@@ -217,36 +246,51 @@ Access at `http://localhost:8000`
 
 ### 1Password CLI Integration
 
-✅ **Full 1Password CLI integration is supported** for secure API key management:
+✅ **Full 1Password CLI integration is configured** for secure API key and SSH key management:
 
 #### Important Configuration Notes
-- **Claude Users**: If you have a Claude Max Plan (claude.ai subscription), you don't need an API key. Set `CLAUDE_MAX_PLAN=true` in your environment.
-- **Vault Location**: All development secrets should be stored in the **Development** vault in 1Password, not the Private vault.
-- **SSH Keys**: SSH keys for Git operations are also stored in the Development vault.
+- **Claude Access**: Using Claude Max Plan subscription ($100-200/month) through claude.ai - NO API KEY REQUIRED. Claude Code authenticates directly with your claude.ai credentials.
+- **All Secrets in Development Vault**: All API keys, tokens, and SSH keys are stored exclusively in the **Development** vault in 1Password, NOT the Private vault.
+- **Automatic Secret Loading**: The 1Password CLI (`op`) automatically injects secrets into processes without exposing them in environment variables or files.
 
 #### Automatic Secret Retrieval
-The system automatically retrieves API keys from 1Password's **Development vault** when the CLI is available:
-- **Claude API** (if using API): `op://Development/Claude API/api_key`
-- **Gemini API**: `op://Development/Gemini API/api_key`
-- **GitHub Token**: `op://Development/GitHub/token`
-- **OpenAI API**: `op://Development/OpenAI API Key/credential`
-- **Codeium API**: `op://Development/Codeium/api_key`
-- **SSH Keys**: `op://Development/[key-name]/private_key`
+The system uses 1Password CLI v2 to retrieve secrets from the **Development vault**:
+
+**API Keys & Tokens** (stored in Development vault):
+- **Claude API** (OPTIONAL - only if not using Max Plan): `op read "op://Development/Claude API/api_key"`
+- **Gemini API**: `op read "op://Development/Gemini API/api_key"`
+- **GitHub Token**: `op read "op://Development/GitHub/token"`
+- **OpenAI API**: `op read "op://Development/OpenAI API Key/credential"`
+- **Codeium API**: `op read "op://Development/Codeium/api_key"`
+
+**SSH Keys** (stored in Development vault):
+- **Git SSH Keys**: `op read "op://Development/GitHub SSH/private key"`
+- **Deploy Keys**: `op read "op://Development/[project-name] Deploy Key/private key"`
+
+The system uses `op run` to inject these secrets directly into processes, maintaining security without writing keys to disk.
 
 #### Setup 1Password Integration
 ```bash
 # Run the setup script to configure 1Password CLI integration
 ./scripts/setup-1password-integration.sh
 
-# Validate API keys (now checks 1Password first)
+# Validate API keys (checks 1Password Development vault)
 ./scripts/validate-api-keys.sh
+
+# Use op run to inject secrets into any command
+op run --env-file=".env" -- docker-compose up
+
+# Check what's in your Development vault
+op item list --vault Development
 ```
 
-#### Features
-- **Automatic detection**: Scripts check for 1Password CLI and use it when available
-- **Fallback support**: Falls back to file-based secrets if 1Password is unavailable
-- **Docker integration**: Creates temporary key files for Docker containers
-- **Session management**: Supports `op run` for injecting secrets into processes
+#### 1Password Features in This Project
+- **Automatic detection**: All scripts check for 1Password CLI (`op`) and use it as primary secret source
+- **Service account support**: Can use 1Password service accounts for CI/CD with restricted vault access
+- **Docker integration**: Creates temporary key files only when Docker requires file-based secrets
+- **Session management**: Uses `op run` for zero-exposure secret injection
+- **Secret references**: Supports `op://` URIs in `.env` files for automatic secret resolution
+- **Biometric authentication**: Unlock vaults with TouchID/Windows Hello instead of passwords
 
 ### GitHub MCP Integration (VS Code)
 
@@ -278,16 +322,21 @@ The auto-commit system leverages GitHub MCP for:
 
 ### API Keys Setup
 
-#### For Claude Max Plan Users
-If you're using Claude through claude.ai with a Max Plan subscription:
+#### For Claude Max Plan Users (RECOMMENDED)
+Claude Max Plan provides Claude Code access WITHOUT requiring an API key:
+
+**Max Plan Options**:
+- **Max 5x** ($100/month): ~50-200 Claude Code prompts per 5 hours
+- **Max 20x** ($200/month): ~200-800 Claude Code prompts per 5 hours
+
 ```bash
-# Set environment variable to indicate Claude Max Plan usage
+# Configure for Claude Max Plan (no API key needed)
 echo "export CLAUDE_MAX_PLAN=true" >> ~/.bashrc
+echo "export CLAUDE_MODEL=claude-3-opus-20240229" >> ~/.bashrc  # or claude-3-sonnet
 source ~/.bashrc
 
-# Or create a config file
-mkdir -p ~/.config/claude
-touch ~/.config/claude/max_plan
+# Claude Code will authenticate with your claude.ai credentials
+# Login happens automatically when you first use Claude Code
 ```
 
 #### For OpenAI Codex CLI Users
@@ -302,27 +351,34 @@ export OPENAI_API_KEY=$(op read "op://Development/OpenAI/api_key")
 codex
 ```
 
-#### Option 1: Using 1Password CLI (Recommended)
+#### Option 1: Using 1Password CLI (PRIMARY METHOD)
 ```bash
-# Install 1Password CLI if not already installed
-curl -sS https://downloads.1password.com/linux/cli/stable/op_linux_amd64_v2.29.0.zip | unzip -j - op -d ~/bin/
+# Install 1Password CLI v2 (latest)
+curl -sS https://downloads.1password.com/linux/cli/stable/op_linux_amd64_latest.zip | unzip -j - op -d ~/bin/
 
-# Sign in to 1Password
+# Sign in to 1Password (uses biometric authentication if available)
 op signin
 
-# Keys are automatically retrieved from Development vault
-# Make sure your secrets are in the "Development" vault, not "Private"
+# Verify Development vault access
+op vault list --filter "name eq Development"
+
+# All project secrets MUST be in the "Development" vault
+# The system will NOT check Private vault for security reasons
 ```
 
-#### Option 2: Manual File-Based Setup
-Create API key files (skip claude_api_key if using Claude Max Plan):
+#### Option 2: Manual File-Based Setup (FALLBACK ONLY)
+Only use this if 1Password CLI is unavailable. Claude Max Plan users skip claude_api_key:
 ```bash
 mkdir -p ~/.secrets
-# Only if using Claude API (not needed for Max Plan):
-# echo "your-claude-api-key" > ~/.secrets/claude_api_key
+# Claude API key NOT NEEDED if using Max Plan
+# echo "sk-ant-..." > ~/.secrets/claude_api_key  # Only for API users
 echo "your-gemini-api-key" > ~/.secrets/gemini_api_key
-echo "your-github-token" > ~/.secrets/github_token  # For GitHub MCP
+echo "ghp_..." > ~/.secrets/github_token  # GitHub personal access token
 chmod 600 ~/.secrets/*
+
+# Better approach: Use 1Password references in .env
+echo 'GEMINI_API_KEY="op://Development/Gemini API/api_key"' >> .env
+echo 'GITHUB_TOKEN="op://Development/GitHub/token"' >> .env
 ```
 
 ### Environment Variables
@@ -434,6 +490,7 @@ MIT License - See LICENSE file for details
 
 - [VS Code Dev Containers Documentation](https://code.visualstudio.com/docs/devcontainers/containers)
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
+- **[📚 Complete Docker Compose Guide](./docs/DOCKER_COMPOSE_GUIDE.md)** - Comprehensive guide covering what, why, when, and how
 - [Claude API Documentation](https://docs.anthropic.com/claude/reference/getting-started-with-the-api)
 - [Gemini API Documentation](https://ai.google.dev/api/rest)
 

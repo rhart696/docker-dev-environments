@@ -240,24 +240,21 @@ EOF
     # Add template-specific extensions
     case $TEMPLATE in
         "python-ai")
-            cat >> "$PROJECT_PATH/.devcontainer/devcontainer.json" << 'EOF'
-,
+            cat >> "$PROJECT_PATH/.devcontainer/devcontainer.json" << 'EOF',
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.debugpy"
 EOF
             ;;
         "nodejs-ai")
-            cat >> "$PROJECT_PATH/.devcontainer/devcontainer.json" << 'EOF'
-,
+            cat >> "$PROJECT_PATH/.devcontainer/devcontainer.json" << 'EOF',
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "prisma.prisma"
 EOF
             ;;
         "fullstack-ai")
-            cat >> "$PROJECT_PATH/.devcontainer/devcontainer.json" << 'EOF'
-,
+            cat >> "$PROJECT_PATH/.devcontainer/devcontainer.json" << 'EOF',
         "ms-python.python",
         "ms-python.vscode-pylance",
         "dbaeumer.vscode-eslint",

@@ -1,0 +1,24 @@
+FROM mcr.microsoft.com/devcontainers/javascript-node:20-bookworm
+
+# Install additional global packages
+RUN npm install -g \
+    typescript \
+    tsx \
+    nodemon \
+    pm2 \
+    pnpm \
+    @nestjs/cli \
+    prisma
+
+# Install database clients
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    mongodb-clients \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up workspace
+WORKDIR /workspace
+
+# Keep container running
+CMD ["sleep", "infinity"]
