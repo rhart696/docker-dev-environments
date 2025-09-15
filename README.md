@@ -12,6 +12,15 @@ This project provides a complete solution for:
 - **Template-based project initialization**
 - **Optional GitHub integration** - Git-ize when you're ready, not before
 
+### Global AI Development Tools Installed
+
+✅ **Claude Code** (v1.0.113) - Via Claude Max Plan subscription
+✅ **OpenAI Codex CLI** (v0.34.0) - Terminal-based coding agent
+✅ **Gemini CLI** (v0.1.13) - Google's AI assistant
+✅ **Claude Code Router** (v1.0.26) - Multi-model routing system
+✅ **GitHub MCP Server** - VS Code GitHub integration
+✅ **MCP Servers** - Memory, Sequential Thinking, Google Drive
+
 ### Philosophy: Progressive Git-ization
 
 Not every project needs to be on GitHub immediately. Our approach:
@@ -279,6 +288,18 @@ source ~/.bashrc
 # Or create a config file
 mkdir -p ~/.config/claude
 touch ~/.config/claude/max_plan
+```
+
+#### For OpenAI Codex CLI Users
+Codex CLI supports two authentication methods:
+```bash
+# Option 1: Sign in with ChatGPT (recommended for Plus/Pro/Team users)
+codex
+# Then select "Sign in with ChatGPT"
+
+# Option 2: Use API key (stored in 1Password Development vault)
+export OPENAI_API_KEY=$(op read "op://Development/OpenAI/api_key")
+codex
 ```
 
 #### Option 1: Using 1Password CLI (Recommended)
