@@ -26,12 +26,20 @@ echo ""
 
 # Function to validate Claude API key
 validate_claude() {
-    echo -e "${YELLOW}Validating Claude API key...${NC}"
+    echo -e "${YELLOW}Checking Claude configuration...${NC}"
 
-    # Check for API key from various sources
+    # Check if using Claude Max Plan (no API key needed)
+    if [ -f "$HOME/.config/claude/max_plan" ] || [ "$CLAUDE_MAX_PLAN" = "true" ]; then
+        echo -e "${GREEN}✅ Using Claude Max Plan (no API key required)${NC}"
+        CLAUDE_VALID=true
+        return 0
+    fi
+
+    # Check for API key from various sources (for API users)
     if command -v op &> /dev/null && op account get &> /dev/null; then
-        # Try 1Password first
-        API_KEY=$(op read "op://Private/Anthropic/api_key" 2>/dev/null || echo "")
+        # Try 1Password Development vault
+        API_KEY=$(op read "op://Development/Claude API/api_key" 2>/dev/null ||
+                  op read "op://Development/Anthropic/api_key" 2>/dev/null || echo "")
     fi
 
     if [ -z "$API_KEY" ] && [ -f "$SECRETS_DIR/claude_api_key" ]; then
@@ -43,9 +51,10 @@ validate_claude() {
     fi
 
     if [ -z "$API_KEY" ]; then
-        echo -e "${RED}❌ Claude API key not found${NC}"
-        echo "  Expected locations:"
-        echo "    - 1Password: op://Private/Anthropic/api_key"
+        echo -e "${YELLOW}ℹ️  Claude API key not found${NC}"
+        echo "  Note: Using Claude Max Plan? Set CLAUDE_MAX_PLAN=true"
+        echo "  For API access, key locations:"
+        echo "    - 1Password: op://Development/Claude API/api_key"
         echo "    - $SECRETS_DIR/claude_api_key"
         echo "    - \$CLAUDE_API_KEY environment variable"
         echo "    - $CONFIG_DIR/claude/api_key"
@@ -88,8 +97,10 @@ validate_gemini() {
 
     # Check for API key from various sources
     if command -v op &> /dev/null && op account get &> /dev/null; then
-        # Try 1Password first
-        API_KEY=$(op read "op://Private/Gemini/api_key" 2>/dev/null || op read "op://Private/Google Gemini/credential" 2>/dev/null || echo "")
+        # Try 1Password Development vault
+        API_KEY=$(op read "op://Development/Gemini API/api_key" 2>/dev/null ||
+                  op read "op://Development/Google Gemini/credential" 2>/dev/null ||
+                  op read "op://Development/Gemini/api_key" 2>/dev/null || echo "")
     fi
 
     if [ -z "$API_KEY" ] && [ -f "$SECRETS_DIR/gemini_api_key" ]; then
@@ -103,7 +114,7 @@ validate_gemini() {
     if [ -z "$API_KEY" ]; then
         echo -e "${RED}❌ Gemini API key not found${NC}"
         echo "  Expected locations:"
-        echo "    - 1Password: op://Private/Gemini/api_key or op://Private/Google Gemini/credential"
+        echo "    - 1Password: op://Development/Gemini API/api_key"
         echo "    - $SECRETS_DIR/gemini_api_key"
         echo "    - \$GEMINI_API_KEY environment variable"
         echo "    - $CONFIG_DIR/gemini/api_key"
@@ -137,8 +148,8 @@ validate_codeium() {
 
     # Check for API key from various sources
     if command -v op &> /dev/null && op account get &> /dev/null; then
-        # Try 1Password first
-        API_KEY=$(op read "op://Private/Codeium/api_key" 2>/dev/null || echo "")
+        # Try 1Password Development vault
+        API_KEY=$(op read "op://Development/Codeium/api_key" 2>/dev/null || echo "")
     fi
 
     if [ -z "$API_KEY" ] && [ -f "$SECRETS_DIR/codeium_api_key" ]; then

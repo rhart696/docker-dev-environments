@@ -49,11 +49,12 @@ check_prerequisites() {
     if command -v op &> /dev/null && op account get &> /dev/null; then
         echo -e "${GREEN}✅ Using 1Password CLI for secrets${NC}"
 
-        # Export API keys from 1Password
-        export CLAUDE_API_KEY=$(op read "op://Private/Anthropic/api_key" 2>/dev/null || echo "")
-        export GEMINI_API_KEY=$(op read "op://Private/Gemini/api_key" 2>/dev/null || op read "op://Private/Google Gemini/credential" 2>/dev/null || echo "")
-        export GITHUB_TOKEN=$(op read "op://Private/GitHub/token" 2>/dev/null || echo "")
-        export CODEIUM_API_KEY=$(op read "op://Private/Codeium/api_key" 2>/dev/null || echo "")
+        # Export API keys from 1Password Development vault
+        # Note: Claude Max Plan doesn't require API key
+        export CLAUDE_API_KEY=$(op read "op://Development/Claude API/api_key" 2>/dev/null || echo "")
+        export GEMINI_API_KEY=$(op read "op://Development/Gemini API/api_key" 2>/dev/null || echo "")
+        export GITHUB_TOKEN=$(op read "op://Development/GitHub/token" 2>/dev/null || echo "")
+        export CODEIUM_API_KEY=$(op read "op://Development/Codeium/api_key" 2>/dev/null || echo "")
 
         # Create temporary key files for Docker if keys exist in 1Password
         if [ -n "$CLAUDE_API_KEY" ]; then
@@ -70,7 +71,8 @@ check_prerequisites() {
     # Fall back to manual entry if keys not found
     if [ ! -f "$SECRETS_DIR/claude_api_key" ] && [ -z "$CLAUDE_API_KEY" ]; then
         echo -e "${YELLOW}⚠️  Claude API key not found${NC}"
-        echo "  Try: op read \"op://Private/Anthropic/api_key\""
+        echo "  Note: Using Claude Max Plan? No API key needed"
+        echo "  For API: op read \"op://Development/Claude API/api_key\""
         read -p "Enter Claude API key (or press Enter to skip): " CLAUDE_KEY
         if [ -n "$CLAUDE_KEY" ]; then
             echo "$CLAUDE_KEY" > "$SECRETS_DIR/claude_api_key"
@@ -80,7 +82,7 @@ check_prerequisites() {
 
     if [ ! -f "$SECRETS_DIR/gemini_api_key" ] && [ -z "$GEMINI_API_KEY" ]; then
         echo -e "${YELLOW}⚠️  Gemini API key not found${NC}"
-        echo "  Try: op read \"op://Private/Gemini/api_key\""
+        echo "  Try: op read \"op://Development/Gemini API/api_key\""
         read -p "Enter Gemini API key (or press Enter to skip): " GEMINI_KEY
         if [ -n "$GEMINI_KEY" ]; then
             echo "$GEMINI_KEY" > "$SECRETS_DIR/gemini_api_key"

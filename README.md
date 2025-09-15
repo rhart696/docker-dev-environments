@@ -210,13 +210,19 @@ Access at `http://localhost:8000`
 
 ✅ **Full 1Password CLI integration is supported** for secure API key management:
 
+#### Important Configuration Notes
+- **Claude Users**: If you have a Claude Max Plan (claude.ai subscription), you don't need an API key. Set `CLAUDE_MAX_PLAN=true` in your environment.
+- **Vault Location**: All development secrets should be stored in the **Development** vault in 1Password, not the Private vault.
+- **SSH Keys**: SSH keys for Git operations are also stored in the Development vault.
+
 #### Automatic Secret Retrieval
-The system automatically retrieves API keys from 1Password when the CLI is available:
-- **Claude API**: `op://Private/Anthropic/api_key`
-- **Gemini API**: `op://Private/Gemini/api_key` or `op://Private/Google Gemini/credential`
-- **GitHub Token**: `op://Private/GitHub/token`
-- **OpenAI API**: `op://Private/OpenAI API Key/credential`
-- **Codeium API**: `op://Private/Codeium/api_key`
+The system automatically retrieves API keys from 1Password's **Development vault** when the CLI is available:
+- **Claude API** (if using API): `op://Development/Claude API/api_key`
+- **Gemini API**: `op://Development/Gemini API/api_key`
+- **GitHub Token**: `op://Development/GitHub/token`
+- **OpenAI API**: `op://Development/OpenAI API Key/credential`
+- **Codeium API**: `op://Development/Codeium/api_key`
+- **SSH Keys**: `op://Development/[key-name]/private_key`
 
 #### Setup 1Password Integration
 ```bash
@@ -261,7 +267,19 @@ The auto-commit system leverages GitHub MCP for:
 - PR creation with AI-generated descriptions
 - Release notes generation from commit history
 
-### API Keys Setup (Alternative Methods)
+### API Keys Setup
+
+#### For Claude Max Plan Users
+If you're using Claude through claude.ai with a Max Plan subscription:
+```bash
+# Set environment variable to indicate Claude Max Plan usage
+echo "export CLAUDE_MAX_PLAN=true" >> ~/.bashrc
+source ~/.bashrc
+
+# Or create a config file
+mkdir -p ~/.config/claude
+touch ~/.config/claude/max_plan
+```
 
 #### Option 1: Using 1Password CLI (Recommended)
 ```bash
@@ -271,17 +289,19 @@ curl -sS https://downloads.1password.com/linux/cli/stable/op_linux_amd64_v2.29.0
 # Sign in to 1Password
 op signin
 
-# Keys are automatically retrieved from 1Password vault
+# Keys are automatically retrieved from Development vault
+# Make sure your secrets are in the "Development" vault, not "Private"
 ```
 
 #### Option 2: Manual File-Based Setup
-Create API key files:
+Create API key files (skip claude_api_key if using Claude Max Plan):
 ```bash
 mkdir -p ~/.secrets
-echo "your-claude-api-key" > ~/.secrets/claude_api_key
+# Only if using Claude API (not needed for Max Plan):
+# echo "your-claude-api-key" > ~/.secrets/claude_api_key
 echo "your-gemini-api-key" > ~/.secrets/gemini_api_key
 echo "your-github-token" > ~/.secrets/github_token  # For GitHub MCP
-chmod 600 ~/.secrets/*_api_key ~/.secrets/github_token
+chmod 600 ~/.secrets/*
 ```
 
 ### Environment Variables
