@@ -34,15 +34,17 @@ echo "  1) Base (minimal with optional AI)"
 echo "  2) Python AI Development"
 echo "  3) Node.js AI Development"
 echo "  4) Full-Stack AI Development"
+echo "  5) Stagehand Browser Testing"
 echo ""
 
-read -p "Enter choice (1-4): " TEMPLATE_CHOICE
+read -p "Enter choice (1-5): " TEMPLATE_CHOICE
 
 case $TEMPLATE_CHOICE in
     1) TEMPLATE="base" ;;
     2) TEMPLATE="python-ai" ;;
     3) TEMPLATE="nodejs-ai" ;;
     4) TEMPLATE="fullstack-ai" ;;
+    5) TEMPLATE="stagehand-testing" ;;
     *) echo "Invalid choice"; exit 1 ;;
 esac
 
@@ -96,6 +98,18 @@ EOF
 echo "✅ Project created"
 echo ""
 
+# Offer Stagehand setup for applicable templates
+if [[ "$TEMPLATE" == "nodejs-ai" || "$TEMPLATE" == "fullstack-ai" || "$TEMPLATE" == "stagehand-testing" ]]; then
+    read -p "Setup Stagehand browser testing? (y/n): " -n 1 -r
+    echo ""
+
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "🎭 Setting up Stagehand..."
+        "$HOME/active-projects/docker-dev-environments/scripts/setup-stagehand.sh" "$PROJECT_PATH"
+        echo ""
+    fi
+fi
+
 # Offer GitHub integration
 read -p "Setup GitHub repository? (y/n): " -n 1 -r
 echo ""
@@ -123,7 +137,13 @@ echo "✨ Setup complete!"
 echo ""
 echo "📚 Next steps:"
 echo "  1. Configure API keys for AI assistants (if needed)"
-echo "  2. Customize .devcontainer/devcontainer.json"
-echo "  3. Add project-specific VS Code extensions"
-echo "  4. Commit .devcontainer to version control"
+if [[ "$TEMPLATE" == "stagehand-testing" ]] || [[ -f "$PROJECT_PATH/tests/stagehand/run-tests.js" ]]; then
+    echo "  2. Add ANTHROPIC_API_KEY to .env file"
+    echo "  3. Run tests: npm run test:stagehand"
+    echo "  4. See STAGEHAND_GUIDE.md for usage details"
+else
+    echo "  2. Customize .devcontainer/devcontainer.json"
+    echo "  3. Add project-specific VS Code extensions"
+    echo "  4. Commit .devcontainer to version control"
+fi
 echo ""
