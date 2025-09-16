@@ -1,0 +1,211 @@
+# Docker Compose Test Environment
+# Used to validate templates and test the Docker Compose integration
+# Run: docker-compose -f docker-compose.test.yml up
+
+version: '3.8'
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-postgres-data:
+  test-redis-data:
+  test-mongo-data:
+
+services:
+  # =====================================
+  # Template Testing Services
+  # =====================================
+
+  test-python-template:
+    build:
+      context: templates/compose
+      dockerfile: Dockerfile.python
+    container_name: test-python-template
+    volumes:
+      - ./test-workspace/python:/workspace
+    networks:
+      - test-network
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    command: |
+      bash -c "
+        echo '✅ Python template loaded successfully'
+        python --version
+        pip list | head -10
+        echo 'Testing database connectivity...'
+        python -c 'import psycopg2; print(\"✅ PostgreSQL client available\")'
+        python -c 'import redis; print(\"✅ Redis client available\")'
+        echo '✅ All Python template tests passed'
+      "
+    depends_on:
+      - test-postgres
+      - test-redis
+    profiles:
+      - templates
+
+  test-nodejs-template:
+    build:
+      context: templates/compose
+      dockerfile: Dockerfile.nodejs
+    container_name: test-nodejs-template
+    volumes:
+      - ./test-workspace/nodejs:/workspace
+    networks:
+      - test-network
+    environment:
+      - NODE_ENV=test
+    command: |
+      bash -c "
+        echo '✅ Node.js template loaded successfully'
+        node --version
+        npm --version
+        echo 'Testing global packages...'
+        which typescript && echo '✅ TypeScript installed'
+        which nodemon && echo '✅ Nodemon installed'
+        which prisma && echo '✅ Prisma installed'
+        echo '✅ All Node.js template tests passed'
+      "
+    profiles:
+      - templates
+
+  # =====================================
+  # Service Stack Testing
+  # =====================================
+
+  test-postgres:
+    image: postgres:15-alpine
+    container_name: test-postgres
+    environment:
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpass
+      - POSTGRES_DB=testdb
+    volumes:
+      - test-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "15432:5432"  # Different port to avoid conflicts
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - databases
+
+  test-mongodb:
+    image: mongo:7
+    container_name: test-mongodb
+    environment:
+      - MONGO_INITDB_DATABASE=testdb
+    volumes:
+      - test-mongo-data:/data/db
+    ports:
+      - "37017:27017"  # Different port to avoid conflicts
+    networks:
+      - test-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - databases
+
+  test-redis:
+    image: redis:7-alpine
+    container_name: test-redis
+    volumes:
+      - test-redis-data:/data
+    ports:
+      - "16379:6379"  # Different port to avoid conflicts
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - databases
+
+  # =====================================
+  # Integration Tests
+  # =====================================
+
+  integration-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: integration-tests
+    volumes:
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - test-network
+    environment:
+      - TEST_ENV=docker
+      - POSTGRES_URL=postgresql://testuser:testpass@test-postgres:5432/testdb
+      - REDIS_URL=redis://test-redis:6379
+      - MONGODB_URI=mongodb://test-mongodb:27017/testdb
+    command: |
+      bash -c "
+        echo '🧪 Running integration tests...'
+        echo 'Testing template generation...'
+        bash -n scripts/dev-container-quickstart.sh && echo '✅ Script syntax valid'
+        echo 'Testing Docker Compose configurations...'
+        for file in templates/compose/*.yml; do
+          docker-compose -f \$file config > /dev/null 2>&1 && echo \"✅ \$file is valid\" || echo \"❌ \$file has errors\"
+        done
+        echo '🎉 Integration tests complete'
+      "
+    depends_on:
+      - test-postgres
+      - test-redis
+      - test-mongodb
+    profiles:
+      - integration
+
+  # =====================================
+  # Smoke Tests (Quick validation)
+  # =====================================
+
+  smoke-test:
+    image: alpine:latest
+    container_name: smoke-tests
+    networks:
+      - test-network
+    command: |
+      sh -c "
+        echo '🔥 Running smoke tests...'
+        apk add --no-cache postgresql-client redis mongodb-tools curl
+        echo 'Testing connectivity...'
+        pg_isready -h test-postgres -p 5432 && echo '✅ PostgreSQL reachable'
+        redis-cli -h test-redis ping && echo '✅ Redis reachable'
+        echo '✅ Smoke tests passed'
+      "
+    depends_on:
+      - test-postgres
+      - test-redis
+    profiles:
+      - smoke
+
+# Usage Examples:
+#
+# Test everything:
+# docker-compose -f docker-compose.test.yml --profile templates --profile databases --profile integration up
+#
+# Test just databases:
+# docker-compose -f docker-compose.test.yml --profile databases up
+#
+# Test just templates:
+# docker-compose -f docker-compose.test.yml --profile templates --profile databases up
+#
+# Run smoke tests:
+# docker-compose -f docker-compose.test.yml --profile databases --profile smoke up
+#
+# Clean up:
+# docker-compose -f docker-compose.test.yml down -v

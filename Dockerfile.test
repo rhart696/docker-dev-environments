@@ -1,0 +1,31 @@
+# Test container for validating Docker Dev Environments
+FROM ubuntu:22.04
+
+# Install test dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    bash \
+    docker.io \
+    docker-compose \
+    postgresql-client \
+    redis-tools \
+    mongodb-clients \
+    python3 \
+    python3-pip \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python test packages
+RUN pip3 install --no-cache-dir \
+    pytest \
+    psycopg2-binary \
+    redis \
+    pymongo
+
+# Set working directory
+WORKDIR /workspace
+
+# Default command
+CMD ["bash"]

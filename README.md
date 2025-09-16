@@ -36,6 +36,8 @@ This keeps you productive for experiments, learning, and client work without pre
 ```
 docker-dev-environments/
 ├── docs/                              # Documentation
+│   ├── adr/                          # Architecture Decision Records
+│   │   └── 002-wsl-directory-structure.md
 │   ├── docker-dev-environment-plan.md
 │   └── docker-dev-multi-agent-orchestration.md
 ├── scripts/                           # Utility scripts
@@ -450,6 +452,22 @@ curl -X POST http://localhost:8000/execute \
 # Agents will: Analyze → Design → Implement → Test → Review
 ```
 
+## 🧪 Testing
+
+### Test Templates and Docker Compose Setup
+```bash
+# Run all template tests
+./test-templates.sh
+
+# Test specific components with Docker Compose
+docker-compose -f docker-compose.test.yml --profile databases up  # Test databases
+docker-compose -f docker-compose.test.yml --profile templates up   # Test templates
+docker-compose -f docker-compose.test.yml --profile smoke up      # Quick smoke tests
+
+# Clean up test environment
+docker-compose -f docker-compose.test.yml down -v
+```
+
 ## 🧰 Troubleshooting
 
 ### Extension Cleanup Issues
@@ -491,6 +509,8 @@ MIT License - See LICENSE file for details
 - [VS Code Dev Containers Documentation](https://code.visualstudio.com/docs/devcontainers/containers)
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - **[📚 Complete Docker Compose Guide](./docs/DOCKER_COMPOSE_GUIDE.md)** - Comprehensive guide covering what, why, when, and how
+- **[🏗️ Architecture Decision Records](./docs/adr/)** - Key architectural decisions and rationale
+  - [WSL Directory Structure Decision](./docs/adr/002-wsl-directory-structure.md) - Why projects should stay in WSL for Docker development
 - [Claude API Documentation](https://docs.anthropic.com/claude/reference/getting-started-with-the-api)
 - [Gemini API Documentation](https://ai.google.dev/api/rest)
 
