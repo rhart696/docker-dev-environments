@@ -1,1 +1,5 @@
-enabled
+# Auto-Commit Configuration
+INTERVAL=300
+AUTO_PUSH=false
+USE_NO_VERIFY=auto
+ENABLED=true
