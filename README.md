@@ -37,7 +37,7 @@ This keeps you productive for experiments, learning, and client work without pre
 
 ```
 docker-dev-environments/
-├── docs/                              # Documentation
+├── docs/ → docs/README.md             # Documentation index and references
 │   ├── adr/                          # Architecture Decision Records
 │   │   └── 002-wsl-directory-structure.md
 │   ├── docker-dev-environment-plan.md
