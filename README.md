@@ -2,6 +2,8 @@
 
 A comprehensive system for creating isolated, Docker-based development environments with sophisticated multi-agent AI orchestration capabilities.
 
+For contribution standards and development workflows, see [Repository Guidelines](AGENTS.md).
+
 ## 🎯 Project Overview
 
 This project provides a complete solution for:
