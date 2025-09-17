@@ -2,7 +2,7 @@
 
 A comprehensive system for creating isolated, Docker-based development environments with sophisticated multi-agent AI orchestration capabilities.
 
-For contribution standards and development workflows, see [Repository Guidelines](AGENTS.md).
+For contribution standards and development workflows, see [Repository Guidelines](AGENTS.md). For a menu of available setups, consult the [Installation Catalogue](docs/installation-catalogue.md).
 
 ## 🎯 Project Overview
 
@@ -41,6 +41,7 @@ docker-dev-environments/
 │   ├── adr/                          # Architecture Decision Records
 │   │   └── 002-wsl-directory-structure.md
 │   ├── docker-dev-environment-plan.md
+│   ├── installation-catalogue.md     # Menu of installable stacks and objectives
 │   └── docker-dev-multi-agent-orchestration.md
 ├── scripts/                           # Utility scripts
 │   ├── vscode-extension-cleanup.sh   # Clean global VS Code extensions

@@ -2,6 +2,10 @@
 
 This catalogue groups the repository's capabilities into discrete, opt-in installations. Each entry describes which objectives it satisfies, its dependencies, and where it competes with alternative installs. Use this as the source of truth when assembling project setup menus or automation manifests.
 
+## Maintaining This Catalogue
+
+When you add or change an installation, update the relevant entry in this file and include supporting links (scripts, compose services, docs). Run `rg` to confirm referenced paths exist, and append a `TODO` callout if any required assets are still in flight. For larger changes, tag the owning team in the PR description so they can verify objectives and adoption guidance.
+
 ## Objectives Reference
 
 - **containerized-dev** – Provide reproducible development environments with project-scoped tooling.
@@ -146,10 +150,10 @@ Each entry shows primary coverage, key dependencies, and recommended usage. Aste
 - **Avoid When**: Working on repos with existing Git metadata (risk of conflicts) or lacking specs.
 
 #### `auto-commit-daemon`*
-- **Summary**: Documented continuous commit workflow (README.md:66-98); implementation script currently missing in `scripts/`.
+- **Summary**: Documented continuous commit workflow (README.md:66-98) with baseline implementation in `scripts/auto-commit.sh`; still requires production hardening and MCP integration polish.
 - **Targets**: Host or container.
 - **Objectives**: delivery-discipline, automation-ux.
-- **Components**: Expected `scripts/auto-commit.sh` (not present).
+- **Components**: `scripts/auto-commit.sh`, optional experimental variants (`scripts/auto-commit-enhanced.sh`, `scripts/auto-commit-optimized.sh`).
 - **Dependencies**: Git, GitHub token (via 1Password), MCP server.
 - **Alternatives**: Manual Git practices; persistence-service automation.
 - **Adopt When**: Desire automated commit cadence once tooling exists.
