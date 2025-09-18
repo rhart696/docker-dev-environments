@@ -47,8 +47,15 @@ if ! command -v op >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! op account get >/dev/null 2>&1; then
-    echo 'Not signed in to 1Password. Run: eval "$(op signin)"' >&2
+# Check for active session
+ACCOUNT_SHORTHAND=$(op account list 2>/dev/null | awk 'NR==2 {print $1}' || echo "my")
+SESSION_VAR="OP_SESSION_${ACCOUNT_SHORTHAND}"
+
+# Ensure session is available for op run
+if [[ -z "${!SESSION_VAR:-}" ]]; then
+    echo "No session token found in $SESSION_VAR" >&2
+    echo "Run: eval \"\$(op signin --account $ACCOUNT_SHORTHAND)\"" >&2
+    echo "Then: export $SESSION_VAR=\"\$OP_SESSION_$ACCOUNT_SHORTHAND\"" >&2
     exit 1
 fi
 
@@ -57,6 +64,7 @@ if [[ ! -f "$TEMPLATE" ]]; then
     exit 1
 fi
 
+# Run with exported session (op run requires session in environment)
 op run --env-file="$TEMPLATE" -- "$@"
 status=$?
 if [[ $status -ne 0 ]]; then
