@@ -1,233 +1,247 @@
 #!/bin/bash
 
-# 1Password CLI Integration Script for Docker Dev Environments
-# Sets up and configures 1Password CLI for seamless API key management
+# 1Password CLI integration bootstrapper for Docker Dev Environments.
 
-set -e
+set -euo pipefail
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-echo -e "${BLUE}=== 1Password CLI Integration Setup ===${NC}"
-echo ""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DEVCONTAINER_DIR="$REPO_ROOT/.devcontainer"
+RUNNER_PATH="$DEVCONTAINER_DIR/run-with-secrets.sh"
+TEMPLATE_PATH="$DEVCONTAINER_DIR/secrets.template"
 
-# Check if 1Password CLI is installed
+DEFAULT_VAULT="${OP_VAULT_NAME:-Development}"
+OPENAI_PATH="${OP_OPENAI_PATH:-OpenAI/api_key}"
+GEMINI_PATH="${OP_GEMINI_PATH:-Gemini API/api_key}"
+ANTHROPIC_PATH="${OP_ANTHROPIC_PATH:-Claude API/api_key}"
+
+usage() {
+    cat <<'EOF'
+Usage: setup-1password-integration.sh [--help]
+
+Environment overrides (only used when bootstrapping a missing template):
+  OP_VAULT_NAME      Default vault name (default: Development)
+  OP_OPENAI_PATH     OpenAI item/field path (default: OpenAI/api_key)
+  OP_GEMINI_PATH     Gemini item/field path (default: "Gemini API"/api_key)
+  OP_ANTHROPIC_PATH  Claude item/field path (default: "Claude API"/api_key)
+
+The script rewrites .devcontainer/run-with-secrets.sh and creates
+.devcontainer/secrets.template if it is absent.
+EOF
+}
+
+log() {
+    printf '%b\n' "$1"
+}
+
 check_op_installed() {
-    if command -v op &> /dev/null; then
-        OP_VERSION=$(op --version)
-        echo -e "${GREEN}✅ 1Password CLI found: version $OP_VERSION${NC}"
-        return 0
-    else
-        echo -e "${RED}❌ 1Password CLI not found${NC}"
-        echo ""
-        echo "Please install 1Password CLI first:"
-        echo "  - Visit: https://developer.1password.com/docs/cli/get-started/"
-        echo "  - Or run: curl -sS https://downloads.1password.com/linux/cli/stable/op_linux_amd64_v2.29.0.zip | unzip -j - op -d ~/bin/"
+    if ! command -v op >/dev/null 2>&1; then
+        log "${RED}❌ 1Password CLI (op) not found on PATH${NC}"
+        log "Install instructions: https://developer.1password.com/docs/cli/get-started/"
+        return 1
+    fi
+    log "${GREEN}✅ 1Password CLI detected: $(op --version)${NC}"
+}
+
+check_op_signed_in() {
+    if ! op account get >/dev/null 2>&1; then
+        log "${YELLOW}⚠️  Not signed in to 1Password${NC}"
+        log 'Run: eval "$(op signin)"'
+        return 1
+    fi
+    local account
+    account=$(op whoami 2>/dev/null | head -n1 || echo "1Password account")
+    log "${GREEN}✅ Signed in: $account${NC}"
+}
+
+check_vault_access() {
+    if ! op vault get "$DEFAULT_VAULT" >/dev/null 2>&1; then
+        log "${RED}❌ Cannot access vault: $DEFAULT_VAULT${NC}"
+        log 'Set OP_VAULT_NAME to a vault you can access, then rerun.'
         return 1
     fi
 }
 
-# Check if user is signed in to 1Password
-check_op_signin() {
-    if op account get &> /dev/null; then
-        ACCOUNT=$(op account get --format json | jq -r .email)
-        echo -e "${GREEN}✅ Signed in to 1Password as: $ACCOUNT${NC}"
-        return 0
-    else
-        echo -e "${YELLOW}⚠️  Not signed in to 1Password${NC}"
-        echo ""
-        echo "Please sign in to 1Password:"
-        echo "  op signin"
+write_runner() {
+    mkdir -p "$DEVCONTAINER_DIR"
+    cat >"$RUNNER_PATH" <<'EOF'
+#!/usr/bin/env bash
+# Execute a command with environment variables sourced from 1Password.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEMPLATE="$SCRIPT_DIR/secrets.template"
+
+usage() {
+    cat <<'USAGE'
+Usage: run-with-secrets.sh [--template PATH] -- <command> [args...]
+
+Loads environment variables from a 1Password template via `op run` and executes
+the command.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --template)
+            shift
+            [[ $# -gt 0 ]] || { echo "Missing value for --template" >&2; exit 1; }
+            TEMPLATE="$1"
+            shift
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [[ $# -eq 0 ]]; then
+    usage >&2
+    exit 1
+fi
+
+if ! command -v op >/dev/null 2>&1; then
+    echo "1Password CLI (op) is not installed or not on PATH" >&2
+    exit 1
+fi
+
+if ! op account get >/dev/null 2>&1; then
+    echo 'Not signed in to 1Password. Run: eval "$(op signin)"' >&2
+    exit 1
+fi
+
+if [[ ! -f "$TEMPLATE" ]]; then
+    echo "Template file not found: $TEMPLATE" >&2
+    exit 1
+fi
+
+op run --env-file="$TEMPLATE" -- "$@"
+status=$?
+if [[ $status -ne 0 ]]; then
+    echo "Command exited with status $status. Confirm your 1Password session is active and the template paths are correct." >&2
+fi
+exit $status
+EOF
+    chmod +x "$RUNNER_PATH"
+    log "${GREEN}✅ Updated helper: $RUNNER_PATH${NC}"
+}
+
+bootstrap_template() {
+    if [[ -f "$TEMPLATE_PATH" ]]; then
+        log "${YELLOW}⚠️  Existing template preserved: $TEMPLATE_PATH${NC}"
+        log '   Edit this file manually if your secret mappings change.'
+        return
+    fi
+
+    cat >"$TEMPLATE_PATH" <<EOF
+# Map environment variables to 1Password vault references.
+# Edit and commit this file so the team and CI share the same mappings.
+OPENAI_API_KEY=op://$DEFAULT_VAULT/$OPENAI_PATH
+GEMINI_API_KEY=op://$DEFAULT_VAULT/$GEMINI_PATH
+ANTHROPIC_API_KEY=op://$DEFAULT_VAULT/$ANTHROPIC_PATH
+EOF
+    log "${GREEN}✅ Created template: $TEMPLATE_PATH${NC}"
+    log '   Update it now if your secrets live in other vaults or items.'
+}
+
+verify_template() {
+    log "${BLUE}Checking template references...${NC}"
+
+    if [[ ! -f "$TEMPLATE_PATH" ]]; then
+        log "${RED}❌ Template not found: $TEMPLATE_PATH${NC}"
+        log 'Populate the template before running commands.'
+        return 1
+    fi
+
+    local missing=0
+
+    while IFS='=' read -r key value || [[ -n "$key" ]]; do
+        if [[ -z "$key" || $key =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+
+        local ref="${value#${value%%[![:space:]]*}}"
+        ref="${ref%${ref##*[![:space:]]}}"
+
+        if [[ ${ref:0:1} == '"' && ${ref: -1} == '"' ]]; then
+            ref="${ref:1:-1}"
+        fi
+
+        if [[ ${ref:0:1} == "'" && ${ref: -1} == "'" ]]; then
+            ref="${ref:1:-1}"
+        fi
+
+        if [[ -z "$ref" ]]; then
+            log "${YELLOW}⚠️  $key has no op:// reference; skipping.${NC}"
+            continue
+        fi
+
+        if op read "$ref" >/dev/null 2>&1; then
+            log "${GREEN}✅ $key available${NC}"
+        else
+            log "${RED}❌ Unable to retrieve $key (check the template entry and vault access)${NC}"
+            missing=1
+        fi
+    done <"$TEMPLATE_PATH"
+
+    if [[ $missing -eq 1 ]]; then
+        log "${RED}Secret verification failed. Ensure you're signed in and the template paths are correct.${NC}"
         return 1
     fi
 }
 
-# Function to retrieve API key from 1Password
-get_api_key_from_op() {
-    local item_path=$1
-    local api_key=""
-
-    if [ -n "$item_path" ]; then
-        api_key=$(op read "$item_path" 2>/dev/null || echo "")
-    fi
-
-    echo "$api_key"
-}
-
-# Function to create environment file with 1Password references
-create_env_file() {
-    local env_file="$1"
-
-    echo -e "${YELLOW}Creating environment file with 1Password references...${NC}"
-
-    cat > "$env_file" << 'EOF'
-# Docker Dev Environments - 1Password Integration
-# This file uses 1Password CLI to retrieve secrets
-
-# Claude API Key
-export CLAUDE_API_KEY=$(op read "op://Private/Anthropic/api_key" 2>/dev/null || echo "")
-
-# Gemini API Key
-export GEMINI_API_KEY=$(op read "op://Private/Gemini/api_key" 2>/dev/null || op read "op://Private/Google Gemini/credential" 2>/dev/null || echo "")
-
-# GitHub Token
-export GITHUB_TOKEN=$(op read "op://Private/GitHub/token" 2>/dev/null || echo "")
-export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
-
-# OpenAI API Key (optional)
-export OPENAI_API_KEY=$(op read "op://Private/OpenAI API Key/credential" 2>/dev/null || echo "")
-
-# Codeium API Key (optional)
-export CODEIUM_API_KEY=$(op read "op://Private/Codeium/api_key" 2>/dev/null || echo "")
-
-# Function to reload secrets from 1Password
-reload_secrets() {
-    echo "Reloading secrets from 1Password..."
-    source ~/.config/docker-dev-environments/1password.env
-    echo "Secrets reloaded successfully"
-}
-
-# Alias for quick secret access
-alias op-secrets='op item list --categories "API Credential" --format json | jq -r ".[] | .title"'
-EOF
-
-    chmod 600 "$env_file"
-    echo -e "${GREEN}✅ Created environment file at: $env_file${NC}"
-}
-
-# Function to create wrapper script for Docker Compose
-create_docker_wrapper() {
-    local wrapper_path="$1"
-
-    echo -e "${YELLOW}Creating Docker Compose wrapper with 1Password integration...${NC}"
-
-    cat > "$wrapper_path" << 'EOF'
-#!/bin/bash
-
-# Docker Compose wrapper with 1Password CLI integration
-# Automatically injects secrets from 1Password
-
-# Source 1Password environment if available
-if [ -f ~/.config/docker-dev-environments/1password.env ]; then
-    source ~/.config/docker-dev-environments/1password.env
-fi
-
-# Run Docker Compose with environment variables
-exec docker-compose "$@"
-EOF
-
-    chmod +x "$wrapper_path"
-    echo -e "${GREEN}✅ Created Docker wrapper at: $wrapper_path${NC}"
-}
-
-# Function to test API key retrieval
-test_api_keys() {
-    echo ""
-    echo -e "${BLUE}Testing API key retrieval from 1Password...${NC}"
-    echo ""
-
-    # Test Claude key
-    echo -n "Claude API key: "
-    if CLAUDE_KEY=$(op read "op://Private/Anthropic/api_key" 2>/dev/null); then
-        echo -e "${GREEN}✅ Found (${#CLAUDE_KEY} characters)${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Not found in 1Password${NC}"
-    fi
-
-    # Test Gemini key
-    echo -n "Gemini API key: "
-    if GEMINI_KEY=$(op read "op://Private/Gemini/api_key" 2>/dev/null || op read "op://Private/Google Gemini/credential" 2>/dev/null); then
-        echo -e "${GREEN}✅ Found (${#GEMINI_KEY} characters)${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Not found in 1Password${NC}"
-    fi
-
-    # Test GitHub token
-    echo -n "GitHub token: "
-    if GITHUB_KEY=$(op read "op://Private/GitHub/token" 2>/dev/null); then
-        echo -e "${GREEN}✅ Found (${#GITHUB_KEY} characters)${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Not found in 1Password${NC}"
-    fi
-
-    # Test OpenAI key
-    echo -n "OpenAI API key: "
-    if OPENAI_KEY=$(op read "op://Private/OpenAI API Key/credential" 2>/dev/null); then
-        echo -e "${GREEN}✅ Found (${#OPENAI_KEY} characters)${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Not found in 1Password${NC}"
-    fi
-}
-
-# Function to setup bash integration
-setup_bash_integration() {
-    echo ""
-    echo -e "${BLUE}Setting up bash integration...${NC}"
-
-    # Add to bashrc if not already present
-    if ! grep -q "docker-dev-environments/1password.env" ~/.bashrc; then
-        cat >> ~/.bashrc << 'EOF'
-
-# Docker Dev Environments - 1Password Integration
-if [ -f ~/.config/docker-dev-environments/1password.env ]; then
-    source ~/.config/docker-dev-environments/1password.env
-fi
-EOF
-        echo -e "${GREEN}✅ Added 1Password integration to ~/.bashrc${NC}"
-    else
-        echo -e "${YELLOW}⚠️  1Password integration already in ~/.bashrc${NC}"
-    fi
-}
-
-# Main execution
 main() {
-    # Check prerequisites
-    check_op_installed || exit 1
-    echo ""
-    check_op_signin || exit 1
-    echo ""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                usage
+                return 0
+                ;;
+            *)
+                usage >&2
+                return 1
+                ;;
+        esac
+    done
 
-    # Create config directory
-    CONFIG_DIR="$HOME/.config/docker-dev-environments"
-    mkdir -p "$CONFIG_DIR"
+    log "${BLUE}=== 1Password CLI Integration Setup ===${NC}"
+    log ""
 
-    # Create environment file
-    create_env_file "$CONFIG_DIR/1password.env"
-    echo ""
+    check_op_installed
+    check_op_signed_in
+    check_vault_access
 
-    # Create Docker wrapper
-    WRAPPER_DIR="$HOME/active-projects/docker-dev-environments/scripts"
-    create_docker_wrapper "$WRAPPER_DIR/docker-compose-op"
-    echo ""
+    write_runner
+    bootstrap_template
+    verify_template
 
-    # Test API keys
-    test_api_keys
-    echo ""
-
-    # Setup bash integration
-    setup_bash_integration
-    echo ""
-
-    # Summary
-    echo -e "${BLUE}=== Setup Complete ===${NC}"
-    echo ""
-    echo "1Password CLI integration is now configured for Docker Dev Environments."
-    echo ""
-    echo -e "${GREEN}Available commands:${NC}"
-    echo "  - Source environment: source ~/.config/docker-dev-environments/1password.env"
-    echo "  - List secrets: op-secrets"
-    echo "  - Reload secrets: reload_secrets"
-    echo "  - Docker with 1Password: ./scripts/docker-compose-op"
-    echo ""
-    echo -e "${YELLOW}Next steps:${NC}"
-    echo "  1. Restart your shell or run: source ~/.bashrc"
-    echo "  2. Test with: ./scripts/validate-api-keys.sh"
-    echo "  3. Use docker-compose-op instead of docker-compose for automatic secret injection"
+    log ""
+    log "${BLUE}=== Setup Complete ===${NC}"
+    log ""
+    log "1Password CLI integration is configured for Docker Dev Environments."
+    log ""
+    log "${GREEN}Available commands:${NC}"
+    log "  - Run commands with secrets: .devcontainer/run-with-secrets.sh -- <command>"
+    log ""
+    log "${YELLOW}Next steps:${NC}"
+    log "  1. Review and customise $TEMPLATE_PATH if your secrets live in other vaults."
+    log "  2. Commit template updates so the team and CI share the same mappings."
+    log "  3. Run project commands through the secrets wrapper as needed."
 }
 
-# Run main function
 main "$@"

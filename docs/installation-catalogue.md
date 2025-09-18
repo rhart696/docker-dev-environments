@@ -128,13 +128,14 @@ Each entry shows primary coverage, key dependencies, and recommended usage. Aste
 - **Avoid When**: Shared infrastructure already provides metrics stack.
 
 #### `secrets-bridge`
-- **Summary**: 1Password CLI integration plus Docker secrets workflow (README.md:240-340; scripts/launch-multi-agent.sh:30-120).
+- **Summary**: 1Password CLI integration plus Docker secrets workflow (README.md:240-340; scripts/launch-multi-agent.sh:30-120) with a reusable helper for devcontainer commands; defaults to the `Development` vault.
 - **Targets**: Both host and containerized setups.
 - **Objectives**: secrets-and-security.
-- **Components**: Setup scripts (`scripts/setup-1password-integration.sh` referenced), secrets directory preparation.
+- **Components**: `scripts/setup-1password-integration.sh`, `.devcontainer/run-with-secrets.sh`, `.devcontainer/secrets.template` (committed and customised per team).
 - **Dependencies**: 1Password CLI v2, authenticated Development vault access.
+- **Operational Tips**: keep `.devcontainer/secrets.template` under version control and authenticate `op` in CI before invoking the wrapper (e.g., piping a service-account token into `op signin --raw`).
 - **Alternatives**: Manual `.env` management; cloud secret managers.
-- **Adopt When**: Teams standardize on 1Password and need automated injection.
+- **Adopt When**: Teams standardize on 1Password and need automated injection; run commands via `.devcontainer/run-with-secrets.sh -- <cmd>` after setup (`OP_VAULT_NAME` can seed a different default vault before you customise the template).
 - **Avoid When**: Policy forbids CLI vault access on shared servers.
 
 ### Delivery & Workflow
